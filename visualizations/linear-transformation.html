@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Imagine Math — Linear Transformation</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f1117;
+      color: #e8eaf6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-align: center;
+      letter-spacing: -0.3px;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #9fa8da;
+      text-align: center;
+      max-width: 660px;
+      line-height: 1.6;
+    }
+
+    .main-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* ── canvas card ── */
+    .canvas-card {
+      background: #1a1d27;
+      border: 1px solid #2e3354;
+      border-radius: 14px;
+      padding: 16px;
+      flex: 1 1 500px;
+    }
+
+    .canvas-card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7986cb;
+      margin-bottom: 10px;
+    }
+
+    svg { display: block; width: 100%; height: auto; }
+
+    /* ── side panel ── */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 0 0 300px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2e3354;
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+
+    .card h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7986cb;
+      margin-bottom: 14px;
+    }
+
+    /* matrix inputs */
+    .matrix-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .bracket {
+      font-size: 3.2rem;
+      color: #9fa8da;
+      line-height: 1;
+      font-weight: 100;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .matrix-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.72rem;
+      color: #7986cb;
+      text-align: center;
+    }
+
+    .matrix-grid input {
+      width: 62px;
+      text-align: center;
+      background: #0f1117;
+      border: 1px solid #3949ab;
+      border-radius: 7px;
+      color: #e8eaf6;
+      font-size: 1rem;
+      padding: 6px 4px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .matrix-grid input:focus { border-color: #7986cb; }
+
+    /* presets */
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 4px;
+    }
+
+    button {
+      background: #1e2235;
+      border: 1px solid #3949ab;
+      border-radius: 8px;
+      color: #c5cae9;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 6px 11px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    button:hover, button.active {
+      background: #3949ab;
+      color: #ffffff;
+    }
+
+    button.danger {
+      border-color: #c62828;
+      color: #ef9a9a;
+    }
+
+    button.danger:hover { background: #c62828; color: #fff; }
+
+    /* animate toggle */
+    button.animate-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-color: #1de9b6;
+      color: #1de9b6;
+    }
+
+    button.animate-btn:hover, button.animate-btn.playing {
+      background: #1de9b6;
+      color: #0f1117;
+    }
+
+    /* vector section */
+    .vector-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .vector-row label {
+      font-size: 0.75rem;
+      color: #7986cb;
+      min-width: 14px;
+    }
+
+    .vector-row input {
+      width: 60px;
+      text-align: center;
+      background: #0f1117;
+      border: 1px solid #3949ab;
+      border-radius: 7px;
+      color: #e8eaf6;
+      font-size: 0.95rem;
+      padding: 5px 4px;
+      outline: none;
+    }
+
+    /* info box */
+    .info-box {
+      background: #0f1117;
+      border-radius: 9px;
+      padding: 12px 14px;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #b0bec5;
+    }
+
+    .info-box .label { color: #7986cb; font-weight: 600; }
+    .info-box .val-orig { color: #ffd54f; font-weight: 700; }
+    .info-box .val-trans { color: #40c4ff; font-weight: 700; }
+    .info-box .val-det  { color: #69f0ae; font-weight: 700; }
+    .info-box .val-scale { color: #ff80ab; font-weight: 700; }
+
+    /* insight */
+    .insight {
+      background: #131829;
+      border-left: 3px solid #7986cb;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      line-height: 1.65;
+      color: #c5cae9;
+    }
+
+    /* progress bar */
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .progress-wrap span {
+      font-size: 0.72rem;
+      color: #7986cb;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: #1de9b6;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Linear Transformation — Imagine Math</h1>
+<p class="subtitle">
+  A matrix is not just numbers. It is a machine that <strong>bends, stretches, rotates,
+  or collapses</strong> the entire coordinate space. Every vector follows the same rule.
+  This is why linear algebra is the language of graphics, physics, genetics, and machine learning.
+</p>
+
+<div class="main-layout">
+
+  <!-- canvas -->
+  <div class="canvas-card">
+    <h2>Coordinate Space — drag the yellow vector tip</h2>
+    <svg id="canvas" viewBox="0 0 540 540"></svg>
+  </div>
+
+  <!-- side panel -->
+  <div class="side-panel">
+
+    <!-- matrix editor -->
+    <div class="card">
+      <h2>Matrix A — the transformation</h2>
+      <div class="matrix-wrap">
+        <span class="bracket">[</span>
+        <div class="matrix-grid">
+          <label>a (col 1 x)<input id="a" type="number" value="1" step="0.1"></label>
+          <label>b (col 2 x)<input id="b" type="number" value="0" step="0.1"></label>
+          <label>c (col 1 y)<input id="c" type="number" value="0" step="0.1"></label>
+          <label>d (col 2 y)<input id="d" type="number" value="1" step="0.1"></label>
+        </div>
+        <span class="bracket">]</span>
+      </div>
+      <div style="margin-top:14px">
+        <div class="card" style="padding:10px 12px">
+          <h2 style="margin-bottom:10px">Presets</h2>
+          <div class="preset-row" id="presets"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- animated morph -->
+    <div class="card">
+      <h2>Animation</h2>
+      <div class="progress-wrap">
+        <span>Morph progress (drag or press Play)</span>
+        <input type="range" id="morphSlider" min="0" max="1" step="0.001" value="0">
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="animate-btn" id="playBtn">▶ Play</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </div>
+
+    <!-- vector input -->
+    <div class="card">
+      <h2>Custom vector v</h2>
+      <div class="vector-row">
+        <label>x</label>
+        <input id="vx" type="number" value="1" step="0.5">
+        <label>y</label>
+        <input id="vy" type="number" value="1" step="0.5">
+      </div>
+    </div>
+
+    <!-- live readout -->
+    <div class="card">
+      <h2>Live readout</h2>
+      <div class="info-box" id="infoBox"></div>
+    </div>
+
+    <!-- insight -->
+    <div class="insight" id="insight"></div>
+
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  Configuration
+// ─────────────────────────────────────────────
+const W = 540, H = 540;
+const ORIGIN = { x: W / 2, y: H / 2 };
+const SCALE  = 50;          // pixels per unit
+const GRID_R = 5;           // half-cells each side
+
+const COLOR = {
+  gridOrig:  "#1e2640",
+  gridTrans: "#2a3560",
+  axisOrig:  "#37474f",
+  e1Orig: "#ffd54f",   // golden  — basis vector e1 original
+  e2Orig: "#ef9a9a",   // pink    — basis vector e2 original
+  e1Trans: "#ffb300",  // amber   — e1 transformed
+  e2Trans: "#e53935",  // red     — e2 transformed
+  vOrig:  "#b2ff59",   // lime    — input vector
+  vTrans: "#40c4ff",   // blue    — transformed vector
+  square: "rgba(100,120,255,0.12)",
+  squareTrans: "rgba(64,196,255,0.12)",
+  squareBorder: "rgba(100,120,255,0.5)",
+  squareBorderTrans: "rgba(64,196,255,0.5)",
+};
+
+const PRESETS = [
+  { label: "Identity",    m: [1,0,0,1],        info: "Nothing moves. Every vector stays exactly where it is." },
+  { label: "Rotate 45°",  m: [0.707,-0.707,0.707,0.707], info: "Pure rotation. Area is preserved (det = 1). No stretching, no shearing." },
+  { label: "Rotate 90°",  m: [0,-1,1,0],       info: "Quarter turn. Still det = 1 — area preserved, orientation preserved." },
+  { label: "Scale ×2",    m: [2,0,0,2],         info: "Uniform stretch. The whole grid doubles. Area scales by det = 4." },
+  { label: "Shear X",     m: [1,1,0,1],         info: "Space slides horizontally. Parallelograms form. det = 1 so area is preserved." },
+  { label: "Shear Y",     m: [1,0,1,1],         info: "Space slides vertically. Same area, different shape." },
+  { label: "Stretch X",   m: [2,0,0,1],         info: "Stretch only in x-direction. det = 2 — area doubles." },
+  { label: "Reflect Y",   m: [-1,0,0,1],        info: "Mirror across the y-axis. det = -1 — orientation is flipped." },
+  { label: "Collapse",    m: [1,0,0,0],         info: "Entire plane squashed onto a line. det = 0 — information is lost." },
+  { label: "Population",  m: [0.96,0.04,0.04,0.96], info: "A migration matrix from population genetics. Each step blends two populations." },
+];
+
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let mat   = { a:1, b:0, c:0, d:1 };
+let vec   = { x:1, y:1 };
+let morph = 0;         // 0 = original space, 1 = transformed space
+let animating = false;
+let animDir   = 1;
+let lastTs    = null;
+
+// ─────────────────────────────────────────────
+//  SVG setup
+// ─────────────────────────────────────────────
+const svg = d3.select("#canvas")
+  .attr("width", W).attr("height", H);
+
+// layers — drawn in z-order
+const layerGridO  = svg.append("g").attr("class","grid-orig");
+const layerGridT  = svg.append("g").attr("class","grid-trans");
+const layerSquare = svg.append("g").attr("class","square");
+const layerAxes   = svg.append("g").attr("class","axes");
+const layerBasis  = svg.append("g").attr("class","basis");
+const layerVec    = svg.append("g").attr("class","vec");
+
+// arrowhead definitions
+const defs = svg.append("defs");
+
+function defArrow(id, color) {
+  defs.append("marker")
+    .attr("id", id)
+    .attr("markerWidth", 8).attr("markerHeight", 6)
+    .attr("refX", 7).attr("refY", 3)
+    .attr("orient", "auto")
+    .append("polygon")
+      .attr("points","0 0, 8 3, 0 6")
+      .attr("fill", color);
+}
+
+defArrow("ah-e1o",  COLOR.e1Orig);
+defArrow("ah-e2o",  COLOR.e2Orig);
+defArrow("ah-e1t",  COLOR.e1Trans);
+defArrow("ah-e2t",  COLOR.e2Trans);
+defArrow("ah-vo",   COLOR.vOrig);
+defArrow("ah-vt",   COLOR.vTrans);
+defArrow("ah-axis", "#455a64");
+
+// ─────────────────────────────────────────────
+//  Coordinate helpers
+// ─────────────────────────────────────────────
+function toSVG(mx, my) {
+  return { x: ORIGIN.x + mx * SCALE, y: ORIGIN.y - my * SCALE };
+}
+
+// Interpolate a point between original and transformed space
+function lerpPoint(ox, oy, t) {
+  const tx = mat.a * ox + mat.b * oy;
+  const ty = mat.c * ox + mat.d * oy;
+  return { x: ox + t * (tx - ox), y: oy + t * (ty - oy) };
+}
+
+// ─────────────────────────────────────────────
+//  Draw helpers
+// ─────────────────────────────────────────────
+function drawArrow(layer, x1, y1, x2, y2, color, ahId, strokeW) {
+  const p1 = toSVG(x1, y1), p2 = toSVG(x2, y2);
+  layer.append("line")
+    .attr("x1", p1.x).attr("y1", p1.y)
+    .attr("x2", p2.x).attr("y2", p2.y)
+    .attr("stroke", color).attr("stroke-width", strokeW)
+    .attr("marker-end", `url(#${ahId})`);
+}
+
+function drawGrid(t) {
+  layerGridO.selectAll("*").remove();
+  layerGridT.selectAll("*").remove();
+  layerAxes.selectAll("*").remove();
+
+  // grid lines — morphed
+  for (let i = -GRID_R; i <= GRID_R; i++) {
+    // horizontal (constant y = i)
+    const s1 = lerpPoint(-GRID_R, i, t), s2 = lerpPoint(GRID_R, i, t);
+    const sp1 = toSVG(s1.x, s1.y), sp2 = toSVG(s2.x, s2.y);
+    const isZero = (i === 0);
+    layerGridT.append("line")
+      .attr("x1",sp1.x).attr("y1",sp1.y).attr("x2",sp2.x).attr("y2",sp2.y)
+      .attr("stroke", isZero ? "#3d506a" : COLOR.gridTrans)
+      .attr("stroke-width", isZero ? 1.2 : 0.6)
+      .attr("opacity", 0.9);
+
+    // vertical (constant x = i)
+    const s3 = lerpPoint(i, -GRID_R, t), s4 = lerpPoint(i, GRID_R, t);
+    const sp3 = toSVG(s3.x, s3.y), sp4 = toSVG(s4.x, s4.y);
+    layerGridT.append("line")
+      .attr("x1",sp3.x).attr("y1",sp3.y).attr("x2",sp4.x).attr("y2",sp4.y)
+      .attr("stroke", isZero ? "#3d506a" : COLOR.gridTrans)
+      .attr("stroke-width", isZero ? 1.2 : 0.6)
+      .attr("opacity", 0.9);
+  }
+
+  // static original grid (ghost, light)
+  if (t > 0.02) {
+    for (let i = -GRID_R; i <= GRID_R; i++) {
+      const p1o = toSVG(-GRID_R, i), p2o = toSVG(GRID_R, i);
+      layerGridO.append("line")
+        .attr("x1",p1o.x).attr("y1",p1o.y).attr("x2",p2o.x).attr("y2",p2o.y)
+        .attr("stroke", COLOR.gridOrig).attr("stroke-width", 0.5)
+        .attr("opacity", Math.min(0.4, t * 0.8));
+      const p3o = toSVG(i, -GRID_R), p4o = toSVG(i, GRID_R);
+      layerGridO.append("line")
+        .attr("x1",p3o.x).attr("y1",p3o.y).attr("x2",p4o.x).attr("y2",p4o.y)
+        .attr("stroke", COLOR.gridOrig).attr("stroke-width", 0.5)
+        .attr("opacity", Math.min(0.4, t * 0.8));
+    }
+  }
+
+  // standard axes (always fixed)
+  const axO = toSVG(-GRID_R-.3, 0), axE = toSVG(GRID_R+.3, 0);
+  const ayO = toSVG(0, -GRID_R-.3), ayE = toSVG(0, GRID_R+.3);
+  layerAxes.append("line")
+    .attr("x1",axO.x).attr("y1",axO.y).attr("x2",axE.x).attr("y2",axE.y)
+    .attr("stroke","#37474f").attr("stroke-width",1).attr("marker-end","url(#ah-axis)");
+  layerAxes.append("line")
+    .attr("x1",ayO.x).attr("y1",ayO.y).attr("x2",ayE.x).attr("y2",ayE.y)
+    .attr("stroke","#37474f").attr("stroke-width",1).attr("marker-end","url(#ah-axis)");
+  layerAxes.append("text").text("x").attr("x",axE.x+6).attr("y",axE.y+5)
+    .attr("fill","#546e7a").attr("font-size","11px");
+  layerAxes.append("text").text("y").attr("x",ayE.x-14).attr("y",ayE.y-5)
+    .attr("fill","#546e7a").attr("font-size","11px");
+}
+
+function drawSquareAndBasis(t) {
+  layerSquare.selectAll("*").remove();
+  layerBasis.selectAll("*").remove();
+
+  // Unit square corners (original: (0,0),(1,0),(1,1),(0,1))
+  const corners = [[0,0],[1,0],[1,1],[0,1]];
+  const pts = corners.map(([ox,oy]) => { const p = lerpPoint(ox,oy,t); return toSVG(p.x,p.y); });
+  const pathD = pts.map((p,i) => `${i===0?'M':'L'}${p.x},${p.y}`).join(" ") + "Z";
+
+  layerSquare.append("path").attr("d", pathD)
+    .attr("fill", t < 0.5 ? COLOR.square : COLOR.squareTrans)
+    .attr("stroke", t < 0.5 ? COLOR.squareBorder : COLOR.squareBorderTrans)
+    .attr("stroke-width", 1.5);
+
+  // label at morphed (1,1)
+  const p11 = lerpPoint(1,1,t), p11s = toSVG(p11.x, p11.y);
+  layerSquare.append("text").text("unit square")
+    .attr("x", p11s.x + 4).attr("y", p11s.y - 6)
+    .attr("fill","#7986cb").attr("font-size","10px");
+
+  // Basis vectors e1=(1,0) and e2=(0,1)
+  const e1m = lerpPoint(1,0,t), e2m = lerpPoint(0,1,t);
+  // e1
+  const o = toSVG(0,0), e1s = toSVG(e1m.x,e1m.y), e2s = toSVG(e2m.x,e2m.y);
+  layerBasis.append("line")
+    .attr("x1",o.x).attr("y1",o.y).attr("x2",e1s.x).attr("y2",e1s.y)
+    .attr("stroke", t<0.5?COLOR.e1Orig:COLOR.e1Trans).attr("stroke-width",2.5)
+    .attr("marker-end",`url(#${t<0.5?"ah-e1o":"ah-e1t"})`);
+  layerBasis.append("text").text(t<0.01?"e₁ = (1,0)":"e₁'")
+    .attr("x",e1s.x+5).attr("y",e1s.y+4).attr("fill",t<0.5?COLOR.e1Orig:COLOR.e1Trans).attr("font-size","11px");
+
+  // e2
+  layerBasis.append("line")
+    .attr("x1",o.x).attr("y1",o.y).attr("x2",e2s.x).attr("y2",e2s.y)
+    .attr("stroke", t<0.5?COLOR.e2Orig:COLOR.e2Trans).attr("stroke-width",2.5)
+    .attr("marker-end",`url(#${t<0.5?"ah-e2o":"ah-e2t"})`);
+  layerBasis.append("text").text(t<0.01?"e₂ = (0,1)":"e₂'")
+    .attr("x",e2s.x+5).attr("y",e2s.y-4).attr("fill",t<0.5?COLOR.e2Orig:COLOR.e2Trans).attr("font-size","11px");
+}
+
+function drawVector(t) {
+  layerVec.selectAll("*").remove();
+  const vm = lerpPoint(vec.x, vec.y, t);
+  const tv = toSVG(vm.x, vm.y);
+  const o  = toSVG(0,0);
+  // line
+  layerVec.append("line")
+    .attr("x1",o.x).attr("y1",o.y).attr("x2",tv.x).attr("y2",tv.y)
+    .attr("stroke", t<0.5?COLOR.vOrig:COLOR.vTrans).attr("stroke-width",2.8)
+    .attr("marker-end",`url(#${t<0.5?"ah-vo":"ah-vt"})`);
+
+  // dashed original ghost when morphed
+  if (t > 0.05) {
+    const origS = toSVG(vec.x, vec.y);
+    layerVec.append("line")
+      .attr("x1",o.x).attr("y1",o.y).attr("x2",origS.x).attr("y2",origS.y)
+      .attr("stroke",COLOR.vOrig).attr("stroke-width",1.2).attr("stroke-dasharray","4 3")
+      .attr("opacity", Math.min(0.6, t));
+    layerVec.append("text").text("v")
+      .attr("x",origS.x+5).attr("y",origS.y-5).attr("fill",COLOR.vOrig).attr("font-size","11px").attr("opacity",0.6);
+  }
+
+  // label
+  layerVec.append("text").text(t<0.5?"v":"Av")
+    .attr("x",tv.x+6).attr("y",tv.y-6).attr("fill",t<0.5?COLOR.vOrig:COLOR.vTrans).attr("font-size","12px").attr("font-weight","bold");
+
+  // draggable handle
+  layerVec.append("circle")
+    .attr("cx",tv.x).attr("cy",tv.y).attr("r",7)
+    .attr("fill",t<0.5?COLOR.vOrig:COLOR.vTrans).attr("stroke","#fff").attr("stroke-width",1.5)
+    .attr("cursor","pointer")
+    .classed("drag-handle", true);
+}
+
+// ─────────────────────────────────────────────
+//  Info box
+// ─────────────────────────────────────────────
+function det() { return mat.a*mat.d - mat.b*mat.c; }
+
+function updateInfo() {
+  const d = det();
+  const tx = mat.a*vec.x + mat.b*vec.y;
+  const ty = mat.c*vec.x + mat.d*vec.y;
+  const infoBox = document.getElementById("infoBox");
+  infoBox.innerHTML = `
+<span class="label">Matrix A:</span><br>
+&nbsp; [ ${fmt(mat.a)}&nbsp; ${fmt(mat.b)} ]<br>
+&nbsp; [ ${fmt(mat.c)}&nbsp; ${fmt(mat.d)} ]<br><br>
+<span class="label">Input vector v:</span>&nbsp;
+<span class="val-orig">(${fmt(vec.x)}, ${fmt(vec.y)})</span><br><br>
+<span class="label">Transformed Av:</span>&nbsp;
+<span class="val-trans">(${fmt(tx)}, ${fmt(ty)})</span><br><br>
+<span class="label">Determinant:</span>&nbsp;
+<span class="val-det">${fmt(d)}</span>&nbsp;
+<span style="color:#607d8b; font-size:0.76rem">(area scale factor)</span><br><br>
+<span class="label">Area scaling:</span>&nbsp;
+<span class="val-scale">${fmt(Math.abs(d))}×</span>
+${d < 0 ? '&nbsp;<span style="color:#ef9a9a; font-size:0.76rem">orientation flipped</span>' : ''}
+${d === 0 ? '&nbsp;<span style="color:#ef9a9a; font-size:0.76rem">space collapsed!</span>' : ''}
+  `;
+}
+
+function fmt(n) { return Number(n.toFixed(3)); }
+
+function updateInsight() {
+  const d = det();
+  const insight = document.getElementById("insight");
+  const a = mat.a, b = mat.b, c = mat.c, dd = mat.d;
+  let text = "";
+  if (Math.abs(d) < 0.01) {
+    text = "det = 0: the transformation collapses the plane onto a line or a point. This is called a singular transformation — you cannot reverse it. Information is permanently lost.";
+  } else if (Math.abs(d - 1) < 0.05 && Math.abs(b + c) < 0.05 && Math.abs(a - dd) < 0.05) {
+    text = "det ≈ 1 and symmetric: this looks like a rotation. Space is turned without any stretching. Angles and lengths are preserved.";
+  } else if (Math.abs(b) < 0.01 && Math.abs(c) < 0.01) {
+    text = `det = ${fmt(d)}: diagonal matrix — axes scale independently. x-axis scales by ${fmt(a)}, y-axis by ${fmt(dd)}.`;
+  } else if (d < 0) {
+    text = "det < 0: the transformation flips orientation. What was counterclockwise is now clockwise. Think of a mirror reflection.";
+  } else if (Math.abs(d) > 1) {
+    text = `det = ${fmt(d)}: area grows by ${fmt(Math.abs(d))}×. The transformation is expansive — it spreads things out.`;
+  } else {
+    text = `det = ${fmt(d)}: area shrinks by ${fmt(1/Math.abs(d))}×. The transformation compresses space inward.`;
+  }
+  insight.textContent = text;
+}
+
+// ─────────────────────────────────────────────
+//  Master render
+// ─────────────────────────────────────────────
+function render(t) {
+  morph = Math.max(0, Math.min(1, t));
+  document.getElementById("morphSlider").value = morph;
+  drawGrid(morph);
+  drawSquareAndBasis(morph);
+  drawVector(morph);
+  updateInfo();
+  updateInsight();
+}
+
+// ─────────────────────────────────────────────
+//  Drag on vector tip
+// ─────────────────────────────────────────────
+const drag = d3.drag()
+  .on("start drag", function(event) {
+    // Convert SVG coords back to math coords for the un-morphed position
+    const svgRect = document.getElementById("canvas").getBoundingClientRect();
+    const svgScale = W / svgRect.width;
+    const mx = (event.sourceEvent.clientX - svgRect.left) * svgScale;
+    const my = (event.sourceEvent.clientY - svgRect.top)  * svgScale;
+    const mathX = (mx - ORIGIN.x) / SCALE;
+    const mathY = -(my - ORIGIN.y) / SCALE;
+
+    // If morphed we need to invert A to get original coords
+    if (morph > 0.5) {
+      const d = mat.a*mat.d - mat.b*mat.c;
+      if (Math.abs(d) > 0.001) {
+        vec.x = (mat.d*mathX - mat.b*mathY) / d;
+        vec.y = (-mat.c*mathX + mat.a*mathY) / d;
+      }
+    } else {
+      vec.x = Math.round(mathX * 4) / 4;
+      vec.y = Math.round(mathY * 4) / 4;
+    }
+
+    document.getElementById("vx").value = fmt(vec.x);
+    document.getElementById("vy").value = fmt(vec.y);
+    render(morph);
+  });
+
+svg.call(drag);
+
+// ─────────────────────────────────────────────
+//  Animation loop
+// ─────────────────────────────────────────────
+function animFrame(ts) {
+  if (!animating) return;
+  if (!lastTs) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  morph += animDir * dt * 0.6;
+  if (morph >= 1) { morph = 1; animDir = -1; }
+  if (morph <= 0) { morph = 0; animDir =  1; }
+  render(morph);
+  requestAnimationFrame(animFrame);
+}
+
+function startAnim() {
+  animating = true;
+  lastTs = null;
+  document.getElementById("playBtn").textContent = "⏸ Pause";
+  document.getElementById("playBtn").classList.add("playing");
+  requestAnimationFrame(animFrame);
+}
+
+function stopAnim() {
+  animating = false;
+  document.getElementById("playBtn").textContent = "▶ Play";
+  document.getElementById("playBtn").classList.remove("playing");
+}
+
+document.getElementById("playBtn").addEventListener("click", () => {
+  animating ? stopAnim() : startAnim();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  stopAnim();
+  animDir = 1;
+  render(0);
+});
+
+document.getElementById("morphSlider").addEventListener("input", function() {
+  stopAnim();
+  render(parseFloat(this.value));
+});
+
+// ─────────────────────────────────────────────
+//  Input bindings
+// ─────────────────────────────────────────────
+function readMatrix() {
+  mat.a = parseFloat(document.getElementById("a").value) || 0;
+  mat.b = parseFloat(document.getElementById("b").value) || 0;
+  mat.c = parseFloat(document.getElementById("c").value) || 0;
+  mat.d = parseFloat(document.getElementById("d").value) || 0;
+  render(morph);
+}
+
+["a","b","c","d"].forEach(id => {
+  document.getElementById(id).addEventListener("input", readMatrix);
+});
+
+function readVec() {
+  vec.x = parseFloat(document.getElementById("vx").value) || 0;
+  vec.y = parseFloat(document.getElementById("vy").value) || 0;
+  render(morph);
+}
+document.getElementById("vx").addEventListener("input", readVec);
+document.getElementById("vy").addEventListener("input", readVec);
+
+// ─────────────────────────────────────────────
+//  Presets
+// ─────────────────────────────────────────────
+const presetsDiv = document.getElementById("presets");
+PRESETS.forEach(preset => {
+  const btn = document.createElement("button");
+  btn.textContent = preset.label;
+  btn.addEventListener("click", () => {
+    stopAnim();
+    mat = { a: preset.m[0], b: preset.m[1], c: preset.m[2], d: preset.m[3] };
+    document.getElementById("a").value = mat.a;
+    document.getElementById("b").value = mat.b;
+    document.getElementById("c").value = mat.c;
+    document.getElementById("d").value = mat.d;
+    presetsDiv.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render(morph);
+  });
+  presetsDiv.appendChild(btn);
+});
+
+// ─────────────────────────────────────────────
+//  Start
+// ─────────────────────────────────────────────
+render(0);
+</script>
+</body>
+</html>
