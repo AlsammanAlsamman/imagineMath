@@ -21,6 +21,7 @@ Instead of memorizing rules, you manipulate them. You drag a vector and watch th
 | Module | Question | Open |
 |--------|----------|------|
 | Linear Transformation | Why does a matrix move all of space, not just one vector? | [open](visualizations/linear-transformation.html) |
+| Polynomial Explorer | What shape does a 4th-degree polynomial make, and how does each coefficient control it? | [open](visualizations/polynomial-explorer.html) |
 
 More modules are planned across linear algebra, calculus, statistics, and dynamical systems.
 

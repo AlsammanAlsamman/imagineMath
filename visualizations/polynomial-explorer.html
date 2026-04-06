@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Imagine Math — Polynomial Explorer</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f1117;
+      color: #e8eaf6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-align: center;
+      letter-spacing: -0.3px;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #9fa8da;
+      text-align: center;
+      max-width: 660px;
+      line-height: 1.6;
+    }
+
+    .main-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* ── canvas card ── */
+    .canvas-card {
+      background: #1a1d27;
+      border: 1px solid #2e3354;
+      border-radius: 14px;
+      padding: 16px;
+      flex: 1 1 500px;
+    }
+
+    .canvas-card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7986cb;
+      margin-bottom: 10px;
+    }
+
+    svg { display: block; width: 100%; height: auto; }
+
+    /* ── side panel ── */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 0 0 300px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2e3354;
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+
+    .card h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7986cb;
+      margin-bottom: 14px;
+    }
+
+    /* equation display */
+    .equation-display {
+      background: #0f1117;
+      border: 1px solid #2e3354;
+      border-radius: 9px;
+      padding: 10px 14px;
+      font-family: "Courier New", monospace;
+      font-size: 1rem;
+      color: #e8eaf6;
+      text-align: center;
+      min-height: 40px;
+      letter-spacing: 0.3px;
+      word-break: break-all;
+      margin-bottom: 14px;
+    }
+
+    /* coefficient grid */
+    .coeff-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 7px 12px;
+      align-items: center;
+    }
+
+    .coeff-grid label {
+      font-size: 0.78rem;
+      font-family: "Courier New", monospace;
+      text-align: right;
+      white-space: nowrap;
+      padding-right: 4px;
+    }
+
+    .coeff-grid input {
+      width: 100%;
+      text-align: center;
+      background: #0f1117;
+      border: 1px solid #3949ab;
+      border-radius: 7px;
+      color: #e8eaf6;
+      font-size: 0.95rem;
+      padding: 5px 4px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .coeff-grid input:focus { border-color: #7986cb; }
+
+    /* per-power colors */
+    .c4 { color: #ff80ab; }
+    .c3 { color: #ffd54f; }
+    .c2 { color: #40c4ff; }
+    .c1 { color: #b2ff59; }
+    .c0 { color: #ea80fc; }
+
+    /* presets */
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    button {
+      background: #1e2235;
+      border: 1px solid #3949ab;
+      border-radius: 8px;
+      color: #c5cae9;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 6px 11px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    button:hover, button.active {
+      background: #3949ab;
+      color: #ffffff;
+    }
+
+    button.animate-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-color: #1de9b6;
+      color: #1de9b6;
+    }
+
+    button.animate-btn:hover, button.animate-btn.playing {
+      background: #1de9b6;
+      color: #0f1117;
+    }
+
+    /* info box */
+    .info-box {
+      background: #0f1117;
+      border-radius: 9px;
+      padding: 12px 14px;
+      font-size: 0.82rem;
+      line-height: 1.75;
+      color: #b0bec5;
+    }
+
+    .info-box .lbl  { color: #7986cb; font-weight: 600; }
+    .info-box .v-x  { color: #ffd54f; font-weight: 700; }
+    .info-box .v-fx { color: #40c4ff; font-weight: 700; }
+    .info-box .v-df { color: #ff80ab; font-weight: 700; }
+    .info-box .v-d2 { color: #b2ff59; font-weight: 700; }
+    .info-box .v-rt { color: #69f0ae; font-weight: 700; }
+
+    /* insight */
+    .insight {
+      background: #131829;
+      border-left: 3px solid #7986cb;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      line-height: 1.65;
+      color: #c5cae9;
+    }
+
+    /* slider rows */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    .slider-row span {
+      font-size: 0.72rem;
+      color: #7986cb;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: #1de9b6;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Polynomial Explorer — Imagine Math</h1>
+<p class="subtitle">
+  A polynomial is a rule that maps every number on the x-axis to a height.
+  Set each power's coefficient, then drag the <strong style="color:#ffd54f">yellow point</strong>
+  along the curve to read its value and tangent slope at any location.
+</p>
+
+<div class="main-layout">
+
+  <!-- canvas -->
+  <div class="canvas-card">
+    <h2>Graph — <span style="color:#69f0ae">● x-intercept</span> &nbsp; <span style="color:#ffab40">◆ y-intercept</span> &nbsp; drag anywhere</h2>
+    <svg id="canvas" viewBox="0 0 540 540"></svg>
+  </div>
+
+  <!-- side panel -->
+  <div class="side-panel">
+
+    <!-- coefficients -->
+    <div class="card">
+      <h2>Polynomial f(x)</h2>
+      <div class="equation-display" id="equationDisplay">f(x) = x⁴</div>
+      <div class="coeff-grid">
+        <label class="c4">a₄ · x⁴</label>
+        <input id="a4" type="number" value="1" step="0.1">
+        <label class="c3">a₃ · x³</label>
+        <input id="a3" type="number" value="0" step="0.1">
+        <label class="c2">a₂ · x²</label>
+        <input id="a2" type="number" value="0" step="0.1">
+        <label class="c1">a₁ · x</label>
+        <input id="a1" type="number" value="0" step="0.1">
+        <label class="c0">a₀ (const)</label>
+        <input id="a0" type="number" value="0" step="0.1">
+      </div>
+    </div>
+
+    <!-- presets -->
+    <div class="card">
+      <h2>Presets</h2>
+      <div class="preset-row" id="presets"></div>
+    </div>
+
+    <!-- animation + zoom -->
+    <div class="card">
+      <h2>Animation &amp; View</h2>
+      <div class="slider-row">
+        <span>Polynomial scale — morph from 0 to f(x)</span>
+        <input type="range" id="morphSlider" min="0" max="1" step="0.001" value="1">
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button class="animate-btn" id="playBtn">▶ Play</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+      <div class="slider-row" style="margin-bottom:0">
+        <span>Zoom — x visible range: ±<span id="zoomLabel">4</span></span>
+        <input type="range" id="zoomSlider" min="1" max="8" step="0.1" value="4">
+      </div>
+    </div>
+
+    <!-- live readout -->
+    <div class="card">
+      <h2>Live readout</h2>
+      <div class="info-box" id="infoBox"></div>
+    </div>
+
+    <!-- insight -->
+    <div class="insight" id="insight"></div>
+
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  Config
+// ─────────────────────────────────────────────
+const W = 540, H = 540;
+const CX = W / 2, CY = H / 2;   // canvas centre
+
+const COLOR = {
+  grid:      "#1e2640",
+  axis:      "#546e7a",
+  curve:     "#40c4ff",
+  tangent:   "#ff80ab",
+  point:     "#ffd54f",
+  root:      "#69f0ae",
+  yIntercept:"#ffab40",
+};
+
+const PRESETS = [
+  { label: "x⁴",             c: [1, 0, 0,  0,  0], info: "The simplest quartic. Symmetric about x = 0, single global minimum at the origin. Even power → always ≥ 0." },
+  { label: "x⁴ − 2x²",       c: [1, 0,-2,  0,  0], info: "Double-well: two local minima at x = ±1, a local maximum at x = 0. Classic shape in physics and optimization." },
+  { label: "x⁴ − 5x² + 4",   c: [1, 0,-5,  0,  4], info: "Four real roots: ±1 and ±2. Watch the green markers appear where the curve crosses the x-axis." },
+  { label: "−x⁴ + 4x²",      c:[-1, 0, 4,  0,  0], info: "Inverted quartic — opens downward. Two peaks, one valley. Curve falls to −∞ on both ends." },
+  { label: "x⁴ + x³ − 2x²",  c: [1, 1,-2,  0,  0], info: "Cubic term breaks symmetry. The two wells are unequal — one side dips deeper." },
+  { label: "x⁴ − 4x + 1",    c: [1, 0, 0, -4,  1], info: "Linear term tilts the quartic. Single deep minimum on the right, flat plateau on the left." },
+  { label: "x³ − 3x",        c: [0, 1, 0, -3,  0], info: "A cubic with a₄ = 0. Two turning points. Note how the ends go in opposite directions." },
+  { label: "x² − 2x − 3",    c: [0, 0, 1, -2, -3], info: "A familiar parabola. Roots at x = −1 and x = 3. Vertex at x = 1." },
+  { label: "Constant 2",      c: [0, 0, 0,  0,  2], info: "No dependence on x at all. A horizontal line — slope is always zero everywhere." },
+];
+
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let C   = { a4:1, a3:0, a2:0, a1:0, a0:0 };
+let xP  = 1.5;     // sample point x
+let T   = 1;       // morph 0→1
+let xR  = 4;       // visible x half-range
+let playing = false, animDir = -1, lastTs = null;
+
+// ─────────────────────────────────────────────
+//  Math helpers
+// ─────────────────────────────────────────────
+function f(x)   { return T * (C.a4*x**4 + C.a3*x**3 + C.a2*x**2 + C.a1*x + C.a0); }
+function df(x)  { return T * (4*C.a4*x**3 + 3*C.a3*x**2 + 2*C.a2*x + C.a1); }
+function d2f(x) { return T * (12*C.a4*x**2 + 6*C.a3*x + 2*C.a2); }
+
+function scale() { return (W / 2 - 16) / xR; }
+function toSVG(mx, my) { const s = scale(); return { x: CX + mx*s, y: CY - my*s }; }
+function fromSVGx(px)  { return (px - CX) / scale(); }
+
+// ─────────────────────────────────────────────
+//  SVG layers
+// ─────────────────────────────────────────────
+const svg    = d3.select("#canvas").attr("width", W).attr("height", H);
+const lGrid  = svg.append("g");
+const lAxes  = svg.append("g");
+const lRoots = svg.append("g");
+const lCurve = svg.append("g");
+const lTan   = svg.append("g");
+const lPoint = svg.append("g");
+
+// Clip to canvas bounds
+svg.append("defs")
+  .append("clipPath").attr("id","clip")
+  .append("rect").attr("x",0).attr("y",0).attr("width",W).attr("height",H);
+lCurve.attr("clip-path","url(#clip)");
+lTan.attr("clip-path","url(#clip)");
+lRoots.attr("clip-path","url(#clip)");
+
+// Arrowhead markers
+const defs = svg.select("defs");
+function mkArrow(id, color) {
+  defs.append("marker").attr("id",id)
+    .attr("markerWidth",8).attr("markerHeight",6)
+    .attr("refX",7).attr("refY",3)
+    .attr("orient","auto")
+    .append("polygon").attr("points","0 0,8 3,0 6").attr("fill",color);
+}
+mkArrow("ah-axis", COLOR.axis);
+mkArrow("ah-tan",  COLOR.tangent);
+
+// ─────────────────────────────────────────────
+//  Drawing
+// ─────────────────────────────────────────────
+function drawGrid() {
+  lGrid.selectAll("*").remove();
+  lAxes.selectAll("*").remove();
+
+  const lo = Math.ceil(-xR), hi = Math.floor(xR);
+
+  for (let i = lo; i <= hi; i++) {
+    // vertical line
+    const v1 = toSVG(i, -xR*1.2), v2 = toSVG(i, xR*1.2);
+    lGrid.append("line")
+      .attr("x1",v1.x).attr("y1",v1.y).attr("x2",v2.x).attr("y2",v2.y)
+      .attr("stroke", i===0 ? "#3d506a" : COLOR.grid)
+      .attr("stroke-width", i===0 ? 1.4 : 0.6).attr("opacity",0.9);
+    // horizontal line
+    const h1 = toSVG(-xR*1.2, i), h2 = toSVG(xR*1.2, i);
+    lGrid.append("line")
+      .attr("x1",h1.x).attr("y1",h1.y).attr("x2",h2.x).attr("y2",h2.y)
+      .attr("stroke", i===0 ? "#3d506a" : COLOR.grid)
+      .attr("stroke-width", i===0 ? 1.4 : 0.6).attr("opacity",0.9);
+    // tick labels (skip 0)
+    if (i !== 0) {
+      const px = toSVG(i, 0);
+      lAxes.append("text").text(i)
+        .attr("x", px.x).attr("y", px.y + 14)
+        .attr("text-anchor","middle").attr("fill","#455a64").attr("font-size","10px");
+      const py = toSVG(0, i);
+      lAxes.append("text").text(i)
+        .attr("x", py.x - 12).attr("y", py.y + 4)
+        .attr("text-anchor","middle").attr("fill","#455a64").attr("font-size","10px");
+    }
+  }
+
+  // Main axes
+  const axL = toSVG(-xR-.4,0), axR_ = toSVG(xR+.4,0);
+  const ayB = toSVG(0,-xR-.4), ayT  = toSVG(0, xR+.4);
+  lAxes.append("line")
+    .attr("x1",axL.x).attr("y1",axL.y).attr("x2",axR_.x).attr("y2",axR_.y)
+    .attr("stroke",COLOR.axis).attr("stroke-width",1.3).attr("marker-end","url(#ah-axis)");
+  lAxes.append("line")
+    .attr("x1",ayB.x).attr("y1",ayB.y).attr("x2",ayT.x).attr("y2",ayT.y)
+    .attr("stroke",COLOR.axis).attr("stroke-width",1.3).attr("marker-end","url(#ah-axis)");
+  lAxes.append("text").text("x").attr("x",axR_.x+6).attr("y",axR_.y+5)
+    .attr("fill","#546e7a").attr("font-size","12px");
+  lAxes.append("text").text("y").attr("x",ayT.x-14).attr("y",ayT.y-5)
+    .attr("fill","#546e7a").attr("font-size","12px");
+}
+
+function drawCurve() {
+  lCurve.selectAll("*").remove();
+  const N = 500;
+  const step = (xR * 2) / N;
+  let d = "";
+  let pen = false;
+  for (let i = 0; i <= N; i++) {
+    const x = -xR + i * step;
+    const y = f(x);
+    const p = toSVG(x, y);
+    if (!isFinite(p.y) || Math.abs(p.y) > 2000) { pen = false; continue; }
+    d += pen ? ` L${p.x},${p.y}` : `M${p.x},${p.y}`;
+    pen = true;
+  }
+  if (d) {
+    lCurve.append("path").attr("d", d)
+      .attr("stroke", COLOR.curve).attr("stroke-width", 2.5).attr("fill","none");
+  }
+
+  // f(x) label near right edge of curve
+  const xLbl = xR * 0.82;
+  const yLbl = f(xLbl);
+  if (isFinite(yLbl)) {
+    const lp = toSVG(xLbl, yLbl);
+    if (lp.y > 6 && lp.y < H - 6) {
+      lCurve.append("text").text("f(x)")
+        .attr("x", lp.x + 5).attr("y", lp.y - 5)
+        .attr("fill", COLOR.curve).attr("font-size","11px").attr("font-weight","bold");
+    }
+  }
+}
+
+function findRoots() {
+  if (Math.abs(T) < 0.01) return [];
+  const N = 800;
+  const step = (xR * 2) / N;
+  const roots = [];
+  let prev = f(-xR);
+  for (let i = 1; i <= N; i++) {
+    const x = -xR + i * step;
+    const curr = f(x);
+    if (!isFinite(curr) || !isFinite(prev)) { prev = curr; continue; }
+    if (prev * curr < 0) {
+      // bisect
+      let lo = x - step, hi = x;
+      for (let j = 0; j < 40; j++) {
+        const mid = (lo + hi) / 2;
+        if (f(lo) * f(mid) < 0) hi = mid; else lo = mid;
+      }
+      const r = (lo + hi) / 2;
+      if (!roots.some(v => Math.abs(v - r) < 0.04)) roots.push(r);
+    }
+    if (Math.abs(curr) < 1e-9 && !roots.some(v => Math.abs(v - x) < 0.04)) roots.push(x);
+    prev = curr;
+  }
+  return roots;
+}
+
+function drawRoots(roots) {
+  lRoots.selectAll("*").remove();
+  if (Math.abs(T) < 0.02) return;
+
+  // ── x-intercepts (green circles on x-axis) ──
+  roots.forEach(r => {
+    const p = toSVG(r, 0);
+    lRoots.append("circle")
+      .attr("cx",p.x).attr("cy",p.y).attr("r",5)
+      .attr("fill",COLOR.root).attr("stroke","#0f1117").attr("stroke-width",1.8);
+    lRoots.append("text").text(`x = ${fmt(r)}`)
+      .attr("x",p.x).attr("y",p.y - 9)
+      .attr("text-anchor","middle").attr("fill",COLOR.root).attr("font-size","9px");
+  });
+
+  // ── y-intercept (orange diamond on y-axis at x=0) ──
+  const yi = f(0);   // f(0) = a0 * T
+  if (isFinite(yi)) {
+    const p = toSVG(0, yi);
+    if (p.y > 4 && p.y < H - 4) {
+      // diamond shape via a small rotated square
+      const r = 6;
+      const diamond = `M${p.x},${p.y - r} L${p.x + r},${p.y} L${p.x},${p.y + r} L${p.x - r},${p.y} Z`;
+      lRoots.append("path").attr("d", diamond)
+        .attr("fill", COLOR.yIntercept).attr("stroke","#0f1117").attr("stroke-width",1.5);
+      lRoots.append("text").text(`y = ${fmt(yi)}`)
+        .attr("x", p.x + 10).attr("y", p.y + 4)
+        .attr("fill", COLOR.yIntercept).attr("font-size","9px");
+    }
+  }
+}
+
+function drawSamplePoint() {
+  lTan.selectAll("*").remove();
+  lPoint.selectAll("*").remove();
+
+  const fx  = f(xP);
+  const dfx = df(xP);
+  if (!isFinite(fx)) return;
+
+  const pCurve = toSVG(xP, fx);
+  const pAxis  = toSVG(xP, 0);
+
+  // Vertical drop to x-axis
+  lTan.append("line")
+    .attr("x1",pCurve.x).attr("y1",pCurve.y).attr("x2",pAxis.x).attr("y2",pAxis.y)
+    .attr("stroke","#455a64").attr("stroke-width",1).attr("stroke-dasharray","4 3");
+
+  // Tangent line (extending ±1.8 units from xP)
+  if (isFinite(dfx)) {
+    const tx1 = xP - 1.8, tx2 = xP + 1.8;
+    const tp1 = toSVG(tx1, fx + dfx*(tx1-xP));
+    const tp2 = toSVG(tx2, fx + dfx*(tx2-xP));
+    lTan.append("line")
+      .attr("x1",tp1.x).attr("y1",tp1.y).attr("x2",tp2.x).attr("y2",tp2.y)
+      .attr("stroke",COLOR.tangent).attr("stroke-width",1.8)
+      .attr("stroke-dasharray","6 4").attr("marker-end","url(#ah-tan)");
+    // slope label
+    lTan.append("text").text(`slope = ${fmt(dfx)}`)
+      .attr("x",tp2.x+4).attr("y",tp2.y-4)
+      .attr("fill",COLOR.tangent).attr("font-size","9px");
+  }
+
+  // x marker on axis
+  lPoint.append("circle")
+    .attr("cx",pAxis.x).attr("cy",pAxis.y).attr("r",3.5)
+    .attr("fill","#455a64");
+
+  // Main draggable sample point
+  lPoint.append("circle")
+    .attr("cx",pCurve.x).attr("cy",pCurve.y).attr("r",8)
+    .attr("fill",COLOR.point).attr("stroke","#fff").attr("stroke-width",2)
+    .attr("cursor","ew-resize");
+
+  // Coordinate label next to point
+  const labelX = pCurve.x + 11;
+  const labelY = pCurve.y - 9;
+  lPoint.append("text").text(`(${fmt(xP)}, ${fmt(fx)})`)
+    .attr("x",labelX).attr("y",labelY)
+    .attr("fill",COLOR.point).attr("font-size","10px").attr("font-weight","bold");
+}
+
+// ─────────────────────────────────────────────
+//  Info + insight
+// ─────────────────────────────────────────────
+function fmt(n) { return isFinite(n) ? Number(n.toFixed(3)) : "—"; }
+
+function updateEquationDisplay() {
+  const terms = [
+    [C.a4, "x⁴"], [C.a3, "x³"], [C.a2, "x²"], [C.a1, "x"], [C.a0, ""],
+  ];
+  const parts = [];
+  terms.forEach(([c, sym]) => {
+    if (c === 0) return;
+    const isFirst  = parts.length === 0;
+    const sign     = isFirst ? (c < 0 ? "−" : "") : (c < 0 ? " − " : " + ");
+    const absC     = Math.abs(c);
+    const coefStr  = (absC === 1 && sym !== "") ? "" : String(fmt(absC));
+    parts.push(`${sign}${coefStr}${sym}`);
+  });
+  document.getElementById("equationDisplay").textContent =
+    "f(x) = " + (parts.length ? parts.join("") : "0");
+}
+
+function updateInfo(roots) {
+  const fx  = f(xP);
+  const dfx = df(xP);
+  const d2  = d2f(xP);
+  let critNote = "";
+  if (Math.abs(dfx) < 0.06 && isFinite(d2)) {
+    critNote = d2 > 0 ? " (local min)" : d2 < 0 ? " (local max)" : " (inflection?)";
+  }
+  document.getElementById("infoBox").innerHTML = `
+<span class="lbl">x:</span>&nbsp;<span class="v-x">${fmt(xP)}</span><br>
+<span class="lbl">f(x):</span>&nbsp;<span class="v-fx">${fmt(fx)}</span><br>
+<span class="lbl">f′(x) — slope:</span>&nbsp;<span class="v-df">${fmt(dfx)}${critNote}</span><br>
+<span class="lbl">f″(x) — concavity:</span>&nbsp;<span class="v-d2">${fmt(d2)}</span>
+<span style="color:#607d8b;font-size:0.75rem">${d2 > 0 ? "concave up ∪" : d2 < 0 ? "concave down ∩" : ""}</span><br><br>
+<span class="lbl">x-intercepts:</span>&nbsp;<span class="v-rt">${roots.length ? roots.map(r => `x = ${fmt(r)}`).join(", ") : "none"}</span><br>
+<span class="lbl">y-intercept:</span>&nbsp;<span style="color:#ffab40;font-weight:700">y = ${fmt(f(0))}</span>
+  `;
+}
+
+function updateInsight() {
+  const dfx = df(xP);
+  const d2  = d2f(xP);
+  const fx  = f(xP);
+  let text = "";
+
+  if (Math.abs(T) < 0.02) {
+    text = "Scale = 0. The curve is the x-axis — the polynomial has been zeroed out. Press Play to watch it grow in from nothing.";
+  } else if (C.a4 === 0 && C.a3 === 0 && C.a2 === 0 && C.a1 === 0) {
+    text = "All variable coefficients are zero — f(x) = constant. The graph is a horizontal line; the function never changes its value.";
+  } else if (C.a4 === 0 && C.a3 === 0 && C.a2 === 0) {
+    text = `Linear function: f(x) = ${fmt(C.a1)}x + ${fmt(C.a0)}. The graph is a straight line. Slope is always ${fmt(C.a1)}, everywhere.`;
+  } else if (Math.abs(dfx) < 0.06 && isFinite(d2)) {
+    if (d2 > 0)      text = `f′ ≈ 0 and f″ > 0 → local minimum here. The function dips down and then rises back on both sides.`;
+    else if (d2 < 0) text = `f′ ≈ 0 and f″ < 0 → local maximum here. The function peaks and then falls on both sides.`;
+    else             text = `f′ ≈ 0 and f″ ≈ 0 → possible inflection point. The tangent is flat but the curve may keep going the same direction.`;
+  } else if (d2 > 0.05) {
+    text = `f″ > 0 — the curve is concave up here (∪ shape). The slope is increasing as x grows.`;
+  } else if (d2 < -0.05) {
+    text = `f″ < 0 — the curve is concave down here (∩ shape). The slope is decreasing as x grows.`;
+  } else if (dfx > 0) {
+    text = `Slope = ${fmt(dfx)}: the function is rising here. Moving right along x increases f(x).`;
+  } else {
+    text = `Slope = ${fmt(dfx)}: the function is falling here. Moving right along x decreases f(x).`;
+  }
+
+  // End-behavior suffix
+  if (Math.abs(T) > 0.5) {
+    if      (C.a4 > 0) text += " | Leading term x⁴ > 0: both ends of the curve rise to +∞.";
+    else if (C.a4 < 0) text += " | Leading term x⁴ < 0: both ends of the curve fall to −∞.";
+    else if (C.a3 > 0) text += " | Leading term x³ > 0: left end → −∞, right end → +∞.";
+    else if (C.a3 < 0) text += " | Leading term x³ < 0: left end → +∞, right end → −∞.";
+  }
+
+  document.getElementById("insight").textContent = text;
+}
+
+// ─────────────────────────────────────────────
+//  Master render
+// ─────────────────────────────────────────────
+function render(t) {
+  if (t !== undefined) {
+    T = Math.max(0, Math.min(1, t));
+    document.getElementById("morphSlider").value = T;
+  }
+  xP = Math.max(-xR, Math.min(xR, xP));   // keep sample in view
+  const roots = findRoots();
+  drawGrid();
+  drawCurve();
+  drawRoots(roots);
+  drawSamplePoint();
+  updateEquationDisplay();
+  updateInfo(roots);
+  updateInsight();
+}
+
+// ─────────────────────────────────────────────
+//  Drag
+// ─────────────────────────────────────────────
+const dragBehavior = d3.drag().on("start drag", function(event) {
+  const rect = document.getElementById("canvas").getBoundingClientRect();
+  const svgScale = W / rect.width;
+  const px = (event.sourceEvent.clientX - rect.left) * svgScale;
+  xP = Math.max(-xR, Math.min(xR, fromSVGx(px)));
+  render();
+});
+svg.call(dragBehavior);
+
+// ─────────────────────────────────────────────
+//  Animation loop
+// ─────────────────────────────────────────────
+function animStep(ts) {
+  if (!playing) return;
+  if (!lastTs) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  T += animDir * dt * 0.55;
+  if (T >= 1) { T = 1; animDir = -1; }
+  if (T <= 0) { T = 0; animDir =  1; }
+  render(T);
+  requestAnimationFrame(animStep);
+}
+
+function startPlay() {
+  playing = true; lastTs = null;
+  document.getElementById("playBtn").textContent = "⏸ Pause";
+  document.getElementById("playBtn").classList.add("playing");
+  requestAnimationFrame(animStep);
+}
+function stopPlay() {
+  playing = false;
+  document.getElementById("playBtn").textContent = "▶ Play";
+  document.getElementById("playBtn").classList.remove("playing");
+}
+
+document.getElementById("playBtn").addEventListener("click",  () => playing ? stopPlay() : startPlay());
+document.getElementById("resetBtn").addEventListener("click", () => { stopPlay(); animDir = 1; render(0); });
+document.getElementById("morphSlider").addEventListener("input", function() { stopPlay(); render(parseFloat(this.value)); });
+document.getElementById("zoomSlider").addEventListener("input", function() {
+  xR = parseFloat(this.value);
+  document.getElementById("zoomLabel").textContent = Number(xR.toFixed(1));
+  render();
+});
+
+// ─────────────────────────────────────────────
+//  Coefficient inputs
+// ─────────────────────────────────────────────
+function readCoeffs() {
+  C.a4 = parseFloat(document.getElementById("a4").value) || 0;
+  C.a3 = parseFloat(document.getElementById("a3").value) || 0;
+  C.a2 = parseFloat(document.getElementById("a2").value) || 0;
+  C.a1 = parseFloat(document.getElementById("a1").value) || 0;
+  C.a0 = parseFloat(document.getElementById("a0").value) || 0;
+  // deactivate any active preset button
+  document.querySelectorAll("#presets button").forEach(b => b.classList.remove("active"));
+  render();
+}
+["a4","a3","a2","a1","a0"].forEach(id => document.getElementById(id).addEventListener("input", readCoeffs));
+
+// ─────────────────────────────────────────────
+//  Presets
+// ─────────────────────────────────────────────
+const presetsDiv = document.getElementById("presets");
+PRESETS.forEach(preset => {
+  const btn = document.createElement("button");
+  btn.textContent = preset.label;
+  btn.addEventListener("click", () => {
+    stopPlay();
+    [C.a4, C.a3, C.a2, C.a1, C.a0] = preset.c;
+    ["a4","a3","a2","a1","a0"].forEach((id, i) => document.getElementById(id).value = preset.c[i]);
+    presetsDiv.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  });
+  presetsDiv.appendChild(btn);
+});
+
+// ─────────────────────────────────────────────
+//  Boot
+// ─────────────────────────────────────────────
+render(1);
+</script>
+</body>
+</html>
